@@ -81,6 +81,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
      * {@link Channel}'s.
      */
     public ServerBootstrap group(EventLoopGroup parentGroup, EventLoopGroup childGroup) {
+        // 调用父类group方法
         super.group(parentGroup);
         if (this.childGroup != null) {
             throw new IllegalStateException("childGroup set already");

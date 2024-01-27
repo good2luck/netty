@@ -273,6 +273,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * Create a new {@link Channel} and bind it.
      */
     public ChannelFuture bind(InetAddress inetHost, int inetPort) {
+        // inetPort端口限制0到65535之间
         return bind(new InetSocketAddress(inetHost, inetPort));
     }
 
@@ -280,6 +281,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * Create a new {@link Channel} and bind it.
      */
     public ChannelFuture bind(SocketAddress localAddress) {
+        // group和channelFactory不能为null
         validate();
         return doBind(ObjectUtil.checkNotNull(localAddress, "localAddress"));
     }
@@ -290,6 +292,13 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         if (regFuture.cause() != null) {
             return regFuture;
         }
+
+//        try {
+        //    等待下面的regFuture.isDone()返回true
+//            Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
         if (regFuture.isDone()) {
             // At this point we know that the registration was complete and successful.
@@ -376,7 +385,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         channel.eventLoop().execute(new Runnable() {
             @Override
             public void run() {
+                // 检查通道注册操作是否成功
                 if (regFuture.isSuccess()) {
+                    // 如果注册成功，调用 bind 方法将通道绑定到指定的本地地址，并且使用提供的 promise 来追踪绑定操作的状态
                     channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
                 } else {
                     promise.setFailure(regFuture.cause());
