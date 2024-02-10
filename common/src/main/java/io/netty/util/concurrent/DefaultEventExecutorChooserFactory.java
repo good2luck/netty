@@ -22,6 +22,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Default implementation which uses simple round-robin to choose next {@link EventExecutor}.
+ *
+ * 性能优化点：
+ * 通过长度来决定是不是2的幂，如果是2的幂，使用 & 运算，如果不是2的幂，使用取模运算
  */
 @UnstableApi
 public final class DefaultEventExecutorChooserFactory implements EventExecutorChooserFactory {
@@ -39,11 +42,18 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
         }
     }
 
+    /**
+     * 判断是否是2的幂，二进制只有最高位一个1，表示为1000...000
+     *
+     * @param val
+     * @return
+     */
     private static boolean isPowerOfTwo(int val) {
         return (val & -val) == val;
     }
 
     private static final class PowerOfTwoEventExecutorChooser implements EventExecutorChooser {
+        // 默认从0开始
         private final AtomicInteger idx = new AtomicInteger();
         private final EventExecutor[] executors;
 
@@ -53,6 +63,7 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
 
         @Override
         public EventExecutor next() {
+            // 使用长度-1 & 运算
             return executors[idx.getAndIncrement() & executors.length - 1];
         }
     }
@@ -70,6 +81,7 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
 
         @Override
         public EventExecutor next() {
+            // 使用取模运算
             return executors[(int) Math.abs(idx.getAndIncrement() % executors.length)];
         }
     }

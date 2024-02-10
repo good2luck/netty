@@ -70,6 +70,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     }
 
     public NioEventLoopGroup(int nThreads, Executor executor) {
+        // SelectorProvider.provider() 初始化一个JDK NIO的SelectorProvider
         this(nThreads, executor, SelectorProvider.provider());
     }
 
@@ -89,11 +90,14 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
 
     public NioEventLoopGroup(
             int nThreads, Executor executor, final SelectorProvider selectorProvider) {
+        // DefaultSelectStrategyFactory.INSTANCE 选择策略工厂，默认的，目前就提供了这一种实现
         this(nThreads, executor, selectorProvider, DefaultSelectStrategyFactory.INSTANCE);
     }
 
     public NioEventLoopGroup(int nThreads, Executor executor, final SelectorProvider selectorProvider,
                              final SelectStrategyFactory selectStrategyFactory) {
+        // RejectedExecutionHandlers.reject() 拒绝策略，默认的，任务队列offer添加任务失败，抛出异常
+        // 调用父类MultithreadEventLoopGroup的构造方法
         super(nThreads, executor, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 
@@ -164,11 +168,21 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         }
     }
 
+    /**
+     * 创建一个NioEventLoop，对应的线程负责处理具体的I/O事件
+     *
+     * @param executor：用于执行EventLoop中任务，默认是ThreadPerTaskExecutor
+     * @param args：参数
+     * @return
+     * @throws Exception
+     */
     @Override
     protected EventLoop newChild(Executor executor, Object... args) throws Exception {
+        // 通过args获取3个参数，分别是EventLoopGroup构造过程中创建的SelectorProvider、SelectStrategyFactory、RejectedExecutionHandler
         SelectorProvider selectorProvider = (SelectorProvider) args[0];
         SelectStrategyFactory selectStrategyFactory = (SelectStrategyFactory) args[1];
         RejectedExecutionHandler rejectedExecutionHandler = (RejectedExecutionHandler) args[2];
+
         EventLoopTaskQueueFactory taskQueueFactory = null;
         EventLoopTaskQueueFactory tailTaskQueueFactory = null;
 
@@ -179,6 +193,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         if (argsLength > 4) {
             tailTaskQueueFactory = (EventLoopTaskQueueFactory) args[4];
         }
+        // 创建 NioEventLoop
         return new NioEventLoop(this, executor, selectorProvider,
                 selectStrategyFactory.newSelectStrategy(),
                 rejectedExecutionHandler, taskQueueFactory, tailTaskQueueFactory);

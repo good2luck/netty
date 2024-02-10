@@ -49,6 +49,8 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
      * @see MultithreadEventExecutorGroup#MultithreadEventExecutorGroup(int, Executor, Object...)
      */
     protected MultithreadEventLoopGroup(int nThreads, Executor executor, Object... args) {
+        // DEFAULT_EVENT_LOOP_THREADS，默认为CPU核心数 * 2
+        // 调用父类MultithreadEventExecutorGroup的构造方法
         super(nThreads == 0 ? DEFAULT_EVENT_LOOP_THREADS : nThreads, executor, args);
     }
 
@@ -83,6 +85,8 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
 
     @Override
     public ChannelFuture register(Channel channel) {
+        // next() 方法返回一个 EventLoop 对象，EventLoop对应实现是SingleThreadEventLoop
+        // 调用所选 EventLoop 的 register(Channel channel) 方法
         return next().register(channel);
     }
 

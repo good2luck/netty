@@ -46,6 +46,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
      */
     protected MultithreadEventExecutorGroup(int nThreads, ThreadFactory threadFactory, Object... args) {
+
         this(nThreads, threadFactory == null ? null : new ThreadPerTaskExecutor(threadFactory), args);
     }
 
@@ -57,6 +58,8 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
      */
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
+        // DefaultEventExecutorChooserFactory.INSTANCE 单例模式，有两个内部类，PowerOfTwoEventExecutorChooser 和 GenericEventExecutorChooser
+        // PowerOfTwoEventExecutorChooser 用于线程数为2的幂次方的情况，获取下一个线程使用&更快
         this(nThreads, executor, DefaultEventExecutorChooserFactory.INSTANCE, args);
     }
 
@@ -71,22 +74,26 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
                                             EventExecutorChooserFactory chooserFactory, Object... args) {
         checkPositive(nThreads, "nThreads");
-
+        // 初始化是为null
         if (executor == null) {
+            // 默认使用ThreadPerTaskExecutor，其实现了JDK的Executor接口；就一个方法，使用线程工厂创建线程并执行
+            // 参数newDefaultThreadFactory()对应线程工厂类：DefaultThreadFactory
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
-
+        // 创建EventExecutor类型的数组，长度为nThreads
         children = new EventExecutor[nThreads];
 
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
+                // 核心方法，创建EventExecutor，由子类实现
                 children[i] = newChild(executor, args);
                 success = true;
             } catch (Exception e) {
                 // TODO: Think about if this is a good exception type
                 throw new IllegalStateException("failed to create a child event loop", e);
             } finally {
+                // 初始化不成功的情况，关闭之前所有已经初始化的线程
                 if (!success) {
                     for (int j = 0; j < i; j ++) {
                         children[j].shutdownGracefully();
@@ -108,8 +115,10 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             }
         }
 
+        // 创建eventLoop的选择器，用于选择下一个eventLoop使用
         chooser = chooserFactory.newChooser(children);
 
+        // Future完成监听器，当所有的eventLoop都关闭时，设置terminationFuture为成功
         final FutureListener<Object> terminationListener = new FutureListener<Object>() {
             @Override
             public void operationComplete(Future<Object> future) throws Exception {
@@ -119,10 +128,13 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             }
         };
 
+        // 当一个 EventExecutor 结束其操作（比如关闭或终止），
+        // 相应的 terminationFuture 将会被通知，随后触发上面terminationListener。
         for (EventExecutor e: children) {
             e.terminationFuture().addListener(terminationListener);
         }
 
+        // 存储所有的eventLoop，不可修改的
         Set<EventExecutor> childrenSet = new LinkedHashSet<EventExecutor>(children.length);
         Collections.addAll(childrenSet, children);
         readonlyChildren = Collections.unmodifiableSet(childrenSet);

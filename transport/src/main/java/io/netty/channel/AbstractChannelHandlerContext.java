@@ -129,6 +129,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     @Override
     public EventExecutor executor() {
         if (executor == null) {
+            // executor为null，使用的是channel的eventLoop
             return channel().eventLoop();
         } else {
             return executor;
@@ -235,6 +236,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     static void invokeChannelActive(final AbstractChannelHandlerContext next) {
         EventExecutor executor = next.executor();
         if (executor.inEventLoop()) {
+            // 如果是在 EventLoop 线程中，直接调用，激活Channel
             next.invokeChannelActive();
         } else {
             executor.execute(new Runnable() {
@@ -572,7 +574,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             // cancelled
             return promise;
         }
-
+        // 查找管道（Pipeline）中负责处理绑定操作的下一个 ChannelHandlerContext。
         final AbstractChannelHandlerContext next = findContextOutbound(MASK_BIND);
         EventExecutor executor = next.executor();
         if (executor.inEventLoop()) {

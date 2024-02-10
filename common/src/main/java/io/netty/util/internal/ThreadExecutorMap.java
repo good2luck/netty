@@ -54,6 +54,9 @@ public final class ThreadExecutorMap {
         return new Executor() {
             @Override
             public void execute(final Runnable command) {
+                // apply方法用于存储当前线程的EventExecutor，可以通过currentExecutor()获取
+                // eventExecutor是NioEventLoop
+                // executor是ThreadPerTaskExecutor
                 executor.execute(apply(command, eventExecutor));
             }
         };

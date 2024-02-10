@@ -22,6 +22,13 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+/**
+ * 性能优化类，代替Selector的selectedKeys集合，当前类使用数组的方式，而不是HashSet的方式存储SelectionKey
+ *
+ * 1、数组的遍历会更快，地址相邻；
+ * 2、数组的存储方式更加紧凑，减少内存碎片；且不需要额外的对象封装
+ * 3、HashSet内部是HashMap，需要额外的Entry对象封装，及遍历时的额外计算
+ */
 final class SelectedSelectionKeySet extends AbstractSet<SelectionKey> {
 
     SelectionKey[] keys;

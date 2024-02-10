@@ -472,6 +472,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             runTasks ++;
 
             // Check timeout every 64 tasks because nanoTime() is relatively expensive.
+            // 由于nanoTime（）相对昂贵，因此每64个任务（二进制与运算）检查一次超时。
             // XXX: Hard-coded value - will make it configurable if it is really a problem.
             if ((runTasks & 0x3F) == 0) {
                 lastExecutionTime = getCurrentTimeNanos();
@@ -824,6 +825,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void execute0(@Schedule Runnable task) {
         ObjectUtil.checkNotNull(task, "task");
+        // wakesUpForTask(task) 返回true，表示需要唤醒线程
         execute(task, wakesUpForTask(task));
     }
 
@@ -831,10 +833,18 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         execute(ObjectUtil.checkNotNull(task, "task"), false);
     }
 
+    /**
+     * @param task：任务
+     * @param immediate：是否立即执行
+     */
     private void execute(Runnable task, boolean immediate) {
+        // inEventLoop()：判断当前线程是否是NioEventLoop的线程
         boolean inEventLoop = inEventLoop();
+        // 添加任务到任务队列中
         addTask(task);
+        // 如果不是NioEventLoop的线程，那么就需要启动线程
         if (!inEventLoop) {
+            // 启动线程
             startThread();
             if (isShutdown()) {
                 boolean reject = false;
@@ -853,6 +863,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             }
         }
 
+        // 是否唤醒selector
         if (!addTaskWakesUp && immediate) {
             wakeup(inEventLoop);
         }
@@ -948,13 +959,16 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     private static final long SCHEDULE_PURGE_INTERVAL = TimeUnit.SECONDS.toNanos(1);
 
     private void startThread() {
+        // 如果线程状态是ST_NOT_STARTED，那么就需要启动线程
         if (state == ST_NOT_STARTED) {
             if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
                 boolean success = false;
                 try {
+                    // 启动线程，核心方法
                     doStartThread();
                     success = true;
                 } finally {
+                    // 如果启动线程失败，那么就将线程状态设置回ST_NOT_STARTED
                     if (!success) {
                         STATE_UPDATER.compareAndSet(this, ST_STARTED, ST_NOT_STARTED);
                     }
@@ -981,8 +995,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         return false;
     }
 
+    /**
+     * 启动线程，会调用 SingleThreadEventExecutor.this.run();
+     */
     private void doStartThread() {
+        // 线程需要是null的情况
         assert thread == null;
+        // 如果executor是ThreadPerTaskExecutor，那么下面会使用ThreadPerTaskExecutor的threadFactory创建一个线程，并立马执行
         executor.execute(new Runnable() {
             @Override
             public void run() {
@@ -994,6 +1013,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    // 核心方法
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {

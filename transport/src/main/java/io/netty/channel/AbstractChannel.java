@@ -257,6 +257,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     @Override
     public ChannelFuture bind(SocketAddress localAddress, ChannelPromise promise) {
+        // 绑定本地地址，bind被当做一个outbound事件，所以会从tail开始执行。所谓的出站，它更广泛地指代任何由服务端向外部环境发起的行动，不仅仅是数据传输。这包括开启监听、关闭连接、发送数据等。
+        // q：为啥是一个outbound事件？
+        // a：因为bind是一个outbound事件，是channel向外发起的事件
+        // q：为啥是channel向外发起的事件？
+        // a：因为bind是channel主动发起的，channel主动发起的事件都是outbound事件
         return pipeline.bind(localAddress, promise);
     }
 
@@ -475,7 +480,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             AbstractChannel.this.eventLoop = eventLoop;
-
+            // Server端启动绑定端口时，这里是main函数，inEventLoop判断当前线程是否和eventLoop对应的线程相等
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
@@ -559,6 +564,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+                // JDK NIO绑定端口
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -570,11 +576,12 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        // 绑定成功后，触发channelActive事件，从head开始
                         pipeline.fireChannelActive();
                     }
                 });
             }
-
+            // 成功绑定后，设置promise为成功
             safeSetSuccess(promise);
         }
 
