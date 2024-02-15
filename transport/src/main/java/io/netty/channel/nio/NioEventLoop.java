@@ -572,6 +572,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                             } finally {
                                 // This update is just to help block unnecessary selector wakeups
                                 // so use of lazySet is ok (no race condition)
+                                // 翻译：这个更新只是为了帮助阻止不必要的选择器唤醒，所以使用lazySet是可以的（没有竞争条件）
+                                // 例如因为进入select前判断有任务，就不会进入select，就不需要唤醒，所以这里设置为AWAKE
                                 nextWakeupNanos.lazySet(AWAKE);
                             }
                             // fall through
